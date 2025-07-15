@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    
+    <!-- Apex Classes -->
+    <types>
+        <members>FirstFilingRequestEmailHandler</members>
+        <name>ApexClass</name>
+    </types>
+
+    <!-- Email Services -->
+    <types>
+        <members>FirstFilingRequestEmailService</members>
+        <name>EmailServicesFunction</name>
+    </types>
+
+
+    <!-- Custom Object -->
+    <types>
+        <members>FirstFiling_Email_Data__c</members>
+        <name>CustomObject</name>
+    </types>
+
+    <!-- Custom Fields on the Custom Object -->
+    <types>
+        <members>FirstFiling_Email_Data__c.Keys__c</members>
+        <members>FirstFiling_Email_Data__c.Email_Text__c</members>
+
+        <name>CustomField</name>
+    </types>
+
+
+    <!-- API Version -->
+    <version>59.0</version>
+</Package>
