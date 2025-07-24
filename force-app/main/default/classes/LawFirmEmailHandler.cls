@@ -11,13 +11,11 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
     global Messaging.InboundEmailResult handleInboundEmail(Messaging.InboundEmail email, Messaging.InboundEnvelope envelope) {
         
         Messaging.InboundEmailResult result = new Messaging.InboundEmailResult();
-        
+
         List<String> tasks = new List<String>();
+
         // Extract Email Body
         String emailBody = email.plainTextBody.replace('*','');
-        
-        system.debug('emailBody'+emailBody);
-        
         if (emailBody == null) {
             result.success = false;
             return result;
@@ -29,10 +27,7 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
             fieldMapping.put(mapping.Email__c, new List<String>{mapping.Object_Name__c,mapping.Object_Field__c});
         }
         
-        
         Map<String, Object> parsedValues = parseEmailBody(fieldMapping,emailBody);
-        
-        
         List<law_firm_request__c> recordList=new List<law_firm_request__c>();
         law_firm_request__c record;
         
@@ -42,42 +37,36 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
         }
         
         if (recordList.size()==0) {
-            record = new law_firm_request__c();
-            
+            record = new law_firm_request__c();   
         }
         else
         {
             record = recordList[0];
         }
         
-        
         Map<String,sObject> recordsMappingToBeInserted = new Map<String,sObject>();
         Boolean anyValuePresent = false;
+
         for (String emailField : parsedValues.keySet()) {
             if(!anyValuePresent){
                 anyValuePresent=  parsedValues.get(emailField)!=null?true:false;
             }
             
-            
             if(!fieldMapping.containsKey(emailField)) {
                 if (parsedValues.get(emailField)!=null && parsedValues.get(emailField) instanceof List<Object>) {
-                    
                     for(Object task : (List<Object>)parsedValues.get(emailField)){
                         tasks.add(String.valueOf(task));
                     }
                 }
-                
             }
             else{
-                system.debug('emailField present'+emailField);
                 String salesforceField = fieldMapping.get(emailField)[1];
                 String salesforceObject = fieldMapping.get(emailField)[0];
-                system.debug('salesforceObject present'+salesforceObject);
-                system.debug('salesforceField present'+salesforceField);
+
                 if(salesforceObject!='law_firm_request__c'){
-                    
                     Type objType = Type.forName('Schema.' + salesforceObject);
                     sObject obj;
+
                     if(recordsMappingToBeInserted.containsKey(salesforceObject)){
                         obj = recordsMappingToBeInserted.get(salesforceObject);
                     }
@@ -87,7 +76,6 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
                     
                     Schema.SObjectType objectType = Schema.getGlobalDescribe().get(salesforceObject);
                     Map<String, Schema.SObjectField> sObjectFieldMap = objectType.getDescribe().fields.getMap();
-                    
                     Schema.DescribeFieldResult sObjectfieldDescribe = sObjectfieldMap.get(salesforceField).getDescribe();
                     
                     if (sObjectfieldDescribe.getType() == Schema.DisplayType.Date) {
@@ -95,8 +83,7 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
                             String dateStr = (String)parsedValues.get(emailField);
                             Date convertedDate = Date.valueOf(dateStr);
                             obj.put(salesforceField, convertedDate);
-                        }
-                        
+                        }  
                     }
                     else if(sObjectfieldDescribe.getType() == Schema.DisplayType.Picklist){
                         
@@ -114,17 +101,12 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
                     }
                     else {
                         obj.put(salesforceField, String.valueOf(parsedValues.get(emailField)));
-                    }
-                    
+                    }  
                     recordsMappingToBeInserted.put(salesforceObject,obj);
-                    system.debug('recordsMappingToBeInserted'+json.serializePretty(recordsMappingToBeInserted));
-                    
                 }
                 else{
-                    
                     Schema.DescribeSObjectResult objectDescribe = law_firm_request__c.SObjectType.getDescribe();
                     Map<String, Schema.SObjectField> fieldMap = objectDescribe.fields.getMap();
-                    system.debug('fieldMap'+fieldMap);
                     if (salesforceField != null && fieldMap.containsKey(salesforceField)) {
                         Schema.DescribeFieldResult fieldDescribe = fieldMap.get(salesforceField).getDescribe();
                         if (fieldDescribe.getType() == Schema.DisplayType.Date) {
@@ -154,9 +136,8 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
                     }
                 }
             }
-            
         }
-        
+
         if(anyValuePresent){
             if(record.Id == null){
                 insert record;
@@ -165,8 +146,9 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
             {
                 update record;
             }
+
             List<Task> taskList = new List<Task>();
-            
+
             for(String task : tasks){
                 taskList.add(new Task(
                     Subject = task,
@@ -176,16 +158,11 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
                     )
                     );
             }
-            
             insert recordsMappingToBeInserted.values();
-            
-            insert taskList;
-            
+            insert taskList;   
         }
-        
-        
+
         result.success = true;
-        
         return result;
     }
     
@@ -197,15 +174,12 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
         Map<String, Object> jsonMap = (Map<String, Object>) JSON.deserializeUntyped(cleanJson);
         return jsonMap;
     }
-    
-    
-    
-    
+
     // extractDataFromEmail : it returns json string by extracting data from email using keys list
     
     public static String extractDataFromEmail(Set<String> keys,String emailText ) {
-        Email_Data__c emailDataRecord = new Email_Data__c(Keys__c=String.join(keys,';'),EmailText__c=emailText);
-        
+
+        Email_Data__c emailDataRecord = new Email_Data__c(Keys__c=String.join(keys,';'),EmailText__c=emailText);      
         insert emailDataRecord;
         Map<String, String> experienceSession = new Map<String, String>();
         
@@ -229,8 +203,8 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
             executeTemplateInput
                 );
             ConnectApi.EinsteinLLMGenerationItemOutput response = generationsOutput.generations[0];
-            System.debug('response.text'+response.text);
             return response.text;
+
         } catch (Exception e) {
             System.debug(e.getMessage());
             throw e;
@@ -241,21 +215,18 @@ global class LawFirmEmailHandler implements Messaging.InboundEmailHandler {
         try {
             // Parse the JSON string to a map
             Map<String, Object> jsonMap = (Map<String, Object>) JSON.deserializeUntyped(jsonString);
-            system.debug('jsonMap'+Json.serializePretty(jsonMap));
+
             if (jsonMap.containsKey('choices')) {
                 List<Object> choices = (List<Object>) jsonMap.get('choices');
-                
-                system.debug('choices = '+json.serializePretty(choices));
-                if (!choices.isEmpty()) {
-                    
+
+                if (!choices.isEmpty()) {                   
                     Map<String, Object> firstChoice = (Map<String, Object>) choices[0];
-                    system.debug('firstChoice'+Json.serializePretty(firstChoice));
+
                     if (firstChoice.containsKey('message')) {
                         
                         Map<String, Object> message = (Map<String, Object>) firstChoice.get('message');
-                        system.debug('message'+Json.serializePretty(message));
+
                         if (message.containsKey('content')) {
-                            system.debug('content'+String.valueOf(message.get('content')));
                             return String.valueOf(message.get('content'));
                         }
                     }
